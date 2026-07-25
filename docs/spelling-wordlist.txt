@@ -1,6 +1,10 @@
 anyio
+async
 asyncio
+demultiplex
 podman
+readably
 runtime
 stdio
+substrings
 trio
