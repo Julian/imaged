@@ -94,26 +94,22 @@ async def test_stderr_survives_the_container(engine, container):
         assert b"very wrong" in session.stderr()
 
 
-async def test_networking_is_off_by_default(engine, container):
+async def test_networking_can_be_switched_off(engine):
     """
-    The whole point of the default, so worth checking it really holds.
+    Engines differ in how they *give* a container networking -- rootless
+    podman is not bridged the way docker is -- so what's worth asserting
+    is the part they agree on, which is having none at all.
     """
-    id = await container("sh", "-c", "ls /sys/class/net")
-    async with engine.start(id) as session:
-        assert await session.receive() == "lo"
-
-
-async def test_networking_can_be_asked_for(engine):
     id = await engine.create_pulling_if_needed(
         IMAGE,
         "sh",
         "-c",
         "ls /sys/class/net",
-        network=True,
+        network=False,
     )
     try:
         async with engine.start(id) as session:
-            assert await session.receive() != "lo"
+            assert await session.receive() == "lo"
     finally:
         await engine.remove(id)
 
@@ -121,7 +117,7 @@ async def test_networking_can_be_asked_for(engine):
 async def test_nonexistent_image(engine):
     with pytest.raises(NoSuchImage):
         await engine.create_pulling_if_needed(
-            "ghcr.io/Julian/imaged-definitely-not-a-real-image:nope",
+            "ghcr.io/julian/imaged-definitely-not-a-real-image:nope",
         )
 
 

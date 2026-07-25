@@ -202,7 +202,7 @@ class Engine:
         self,
         image: str,
         *command: str,
-        network: bool = False,
+        network: bool = True,
     ) -> str:
         """
         Create (but do not start) a container, returning its ID.
@@ -210,8 +210,10 @@ class Engine:
         Any `command` given replaces whatever the image would otherwise
         run.
 
-        Networking is off unless asked for, which is what keeps a
-        container from reaching anything whilst it runs.
+        Networking is whatever the engine does by default, unless it's
+        switched off here, in which case the container gets none at all.
+        How an engine provides networking is its own business, and they
+        do differ; having none is the part they agree on.
         """
         args = ["create", "--interactive"]
         if not network:
@@ -224,7 +226,7 @@ class Engine:
         self,
         image: str,
         *command: str,
-        network: bool = False,
+        network: bool = True,
     ) -> str:
         """
         Create a container, fetching its image first if we lack it.

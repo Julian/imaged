@@ -167,13 +167,16 @@ class TestSessions:
 
 
 class TestCreating:
-    async def test_networking_is_off_by_default(self, engine, argv):
+    async def test_networking_is_the_engine_default(self, engine, argv):
+        """
+        We say nothing at all, rather than second-guessing the engine.
+        """
         await engine.create("some-image")
-        assert "'--network', 'none'" in argv()[0]
-
-    async def test_networking_can_be_asked_for(self, engine, argv):
-        await engine.create("some-image", network=True)
         assert "--network" not in argv()[0]
+
+    async def test_networking_can_be_switched_off(self, engine, argv):
+        await engine.create("some-image", network=False)
+        assert "'--network', 'none'" in argv()[0]
 
     async def test_stdin_is_always_open(self, engine, argv):
         await engine.create("some-image")
@@ -257,8 +260,10 @@ class TestClassification:
             (CONTAINER, 'interrupted: "XPC connection error: Connection'),
             (
                 CONTAINER,
-                "Ensure container system service has been started with "
-                "`container system start`.",
+                (
+                    "Ensure container system service has been started "
+                    "with `container system start`."
+                ),
             ),
         ],
     )
@@ -276,8 +281,10 @@ class TestClassification:
         [
             (
                 DOCKER,
-                "Error response from daemon: manifest for foo:latest not "
-                "found: manifest unknown",
+                (
+                    "Error response from daemon: manifest for foo:latest "
+                    "not found: manifest unknown"
+                ),
             ),
             (DOCKER, "Error response from daemon: pull access denied for x"),
             (DOCKER, 'Head "https://ghcr.io/v2/x/manifests/latest": denied'),
