@@ -58,7 +58,10 @@ def _prepared(context: Path) -> Generator[Path]:
     inside a Linux container -- and its filesystem has no executable bit
     for the engine to preserve.
     """
-    if sys.platform != "win32":
+    # A context which isn't there is handed over as-is, so that the
+    # engine says so rather than us quietly building from an empty
+    # directory we just made.
+    if sys.platform != "win32" or not context.is_dir():
         yield context
         return
 
