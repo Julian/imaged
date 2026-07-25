@@ -282,6 +282,13 @@ class TestAttaching:
         with pytest.raises(NoSuchContainer):
             await engine.attach("nonexistent-container").__aenter__()
 
+    def test_which_engines_can(self):
+        """
+        Worth asking before trying, so a caller can say so up front.
+        """
+        assert Engine(dialect=DOCKER).attaches
+        assert not Engine(dialect=CONTAINER).attaches
+
     async def test_unsupported(self):
         engine = Engine(dialect=CONTAINER)
         with pytest.raises(Unsupported) as excinfo:
