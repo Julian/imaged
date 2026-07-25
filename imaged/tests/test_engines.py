@@ -40,6 +40,9 @@ pytestmark = pytest.mark.anyio
 FAKE_ENGINE = """\
 import pathlib, sys
 
+# A real container is Linux, so don't let Windows translate ours.
+sys.stdout.reconfigure(newline=chr(10))
+
 args = sys.argv[1:]
 pathlib.Path(__file__).with_name("argv").open("a").write(f"{args}\\n")
 
@@ -58,6 +61,10 @@ match args:
                 sys.exit(0)
             if line.strip() == "complain":
                 print("something went wrong", file=sys.stderr, flush=True)
+                continue
+            if line.strip() == "crlf":
+                sys.stdout.write("fine" + chr(13) + chr(10))
+                sys.stdout.flush()
                 continue
             if line.strip() == "flood":
                 sys.stdout.write("x" * 1000)  # ... and never a newline
@@ -152,6 +159,12 @@ class TestSessions:
         async with engine.start(id) as session:
             assert session.alive
         assert not session.alive
+
+    async def test_a_container_speaking_crlf(self, engine):
+        id = await engine.create("some-image")
+        async with engine.start(id) as session:
+            await session.send("crlf")
+            assert await session.receive() == "fine"
 
     async def test_a_container_which_never_sends_a_newline(
         self,

@@ -141,7 +141,8 @@ class Session:
             # A harness which has said this much without a newline is
             # never going to send one.
             raise SessionClosed(stderr=self.stderr()) from None
-        return line.decode()
+        # Tolerate CRLF, as line oriented protocols generally do.
+        return line.decode().removesuffix("\r")
 
 
 @frozen
