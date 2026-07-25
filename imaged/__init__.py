@@ -13,12 +13,12 @@ engine to demultiplex container stdio onto real pipes for us.
 asyncio and trio.
 """
 
-from imaged._backends import (
+from imaged._dialects import (
     CONTAINER,
     DOCKER,
     KNOWN,
     PODMAN,
-    Backend,
+    Dialect,
 )
 from imaged._errors import (
     EngineError,
@@ -37,7 +37,7 @@ __all__ = [
     "DOCKER",
     "KNOWN",
     "PODMAN",
-    "Backend",
+    "Dialect",
     "Engine",
     "EngineError",
     "EngineFailed",

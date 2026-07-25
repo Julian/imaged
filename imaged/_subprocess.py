@@ -23,7 +23,7 @@ from anyio.streams.buffered import BufferedByteReceiveStream
 from attrs import field, frozen
 import anyio
 
-from imaged._backends import KNOWN
+from imaged._dialects import KNOWN
 from imaged._errors import (
     NoSuchContainer,
     NoSuchEngine,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
     from anyio.abc import ByteReceiveStream, Process
 
-    from imaged._backends import Backend
+    from imaged._dialects import Dialect
 
 
 #: The longest line we will buffer from a container before giving up.
@@ -150,17 +150,17 @@ class Engine:
     A container engine, driven via its command line interface.
     """
 
-    _backend: Backend = field(alias="backend")
+    _dialect: Dialect = field(alias="dialect")
 
     @classmethod
-    def detect(cls, *backends: Backend) -> Engine:
+    def detect(cls, *dialects: Dialect) -> Engine:
         """
         Use the first engine we know about which is actually installed.
         """
-        candidates = backends or KNOWN
-        for backend in candidates:
-            if which(backend.command[0]) is not None:
-                return cls(backend=backend)
+        candidates = dialects or KNOWN
+        for dialect in candidates:
+            if which(dialect.command[0]) is not None:
+                return cls(dialect=dialect)
         raise NoSuchEngine(tried=tuple(each.name for each in candidates))
 
     @classmethod
@@ -168,9 +168,9 @@ class Engine:
         """
         Use one specific engine, by name.
         """
-        for backend in KNOWN:
-            if backend.name == name:
-                return cls(backend=backend)
+        for dialect in KNOWN:
+            if dialect.name == name:
+                return cls(dialect=dialect)
         raise NoSuchEngine(tried=(name,))
 
     @property
@@ -178,22 +178,22 @@ class Engine:
         """
         Which engine this is.
         """
-        return self._backend.name
+        return self._dialect.name
 
     @property
     def attaches(self) -> bool:
         """
         Can this engine reattach to a running container's stdio?
         """
-        return self._backend.attaches
+        return self._dialect.attaches
 
     async def pull(self, image: str) -> None:
         """
         Fetch an image from wherever it lives.
         """
         await self._engine(
-            *self._backend.pull,
-            *self._backend.quiet_pull,
+            *self._dialect.pull,
+            *self._dialect.quiet_pull,
             image,
             subject=image,
         )
@@ -215,7 +215,7 @@ class Engine:
         """
         args = ["create", "--interactive"]
         if not network:
-            args.extend(self._backend.no_network)
+            args.extend(self._dialect.no_network)
         args.append(image)
         args.extend(command)
         return (await self._engine(*args, subject=image)).strip()
@@ -272,14 +272,14 @@ class Engine:
         """
         Delete an image.
         """
-        await self._engine(*self._backend.remove_image, tag, subject=tag)
+        await self._engine(*self._dialect.remove_image, tag, subject=tag)
 
     async def exists(self, id: str) -> bool:
         """
         Is there a container with the given ID?
         """
         try:
-            await self._engine(*self._backend.inspect, id, subject=id)
+            await self._engine(*self._dialect.inspect, id, subject=id)
         except NoSuchContainer:
             return False
         return True
@@ -298,14 +298,14 @@ class Engine:
         """
         Speak to the standard streams of an already running container.
         """
-        if not self._backend.attaches:
+        if not self._dialect.attaches:
             raise Unsupported(
-                engine=self._backend.name,
+                engine=self._dialect.name,
                 operation="attach to a running container",
             )
         # Confirm it exists up front, as otherwise a bad ID shows up only
         # as a session which closes immediately for no stated reason.
-        await self._engine(*self._backend.inspect, id, subject=id)
+        await self._engine(*self._dialect.inspect, id, subject=id)
         async with self._session("attach", id) as session:
             yield session
 
@@ -313,14 +313,14 @@ class Engine:
         """
         Run an engine command to completion, returning its stdout.
         """
-        argv = (*self._backend.command, *args)
+        argv = (*self._dialect.command, *args)
         try:
             completed = await anyio.run_process(argv, check=False)
         except FileNotFoundError:
-            raise NoSuchEngine(tried=(self._backend.name,)) from None
+            raise NoSuchEngine(tried=(self._dialect.name,)) from None
 
         if completed.returncode:
-            raise self._backend.classify(
+            raise self._dialect.classify(
                 argv=argv,
                 returncode=completed.returncode,
                 stderr=completed.stderr.decode(),
@@ -333,7 +333,7 @@ class Engine:
         """
         Speak to whatever container the given command connects us to.
         """
-        argv = (*self._backend.command, *args)
+        argv = (*self._dialect.command, *args)
         with TemporaryDirectory() as directory:
             # We hand the container a file to write standard error to,
             # and read it back via a second, independent handle.
@@ -346,7 +346,7 @@ class Engine:
                     process = await anyio.open_process(argv, stderr=stderr)
                 except FileNotFoundError:
                     raise NoSuchEngine(
-                        tried=(self._backend.name,),
+                        tried=(self._dialect.name,),
                     ) from None
 
                 try:

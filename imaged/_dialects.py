@@ -20,7 +20,7 @@ from imaged._errors import (
 
 
 @frozen
-class Backend:
+class Dialect:
     """
     One container engine, and how its CLI differs from the others.
     """
@@ -107,7 +107,7 @@ class Backend:
         )
 
 
-DOCKER = Backend(
+DOCKER = Dialect(
     name="docker",
     not_running=(
         "cannot connect to the docker daemon",
@@ -125,7 +125,7 @@ DOCKER = Backend(
     no_such_container=("no such container",),
 )
 
-PODMAN = Backend(
+PODMAN = Dialect(
     name="podman",
     not_running=(
         "cannot connect to podman",
@@ -142,7 +142,7 @@ PODMAN = Backend(
     ),
 )
 
-CONTAINER = Backend(
+CONTAINER = Dialect(
     name="container",
     pull=("image", "pull"),
     quiet_pull=("--disable-progress-updates",),

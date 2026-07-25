@@ -6,7 +6,7 @@ what's worth testing here is the plumbing -- argv construction, stdio
 round trips, how sessions end and how failures are classified -- none of
 which needs a container to exercise.
 Whether each real engine actually speaks the dialect described in
-`imaged._backends` is what the against-a-real-engine tests are for.
+`imaged._dialects` is what the against-a-real-engine tests are for.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from imaged import (
     CONTAINER,
     DOCKER,
     PODMAN,
-    Backend,
+    Dialect,
     Engine,
     EngineFailed,
     EngineNotRunning,
@@ -93,7 +93,7 @@ def engine(tmp_path):
     script = tmp_path / "fake-engine.py"
     script.write_text(FAKE_ENGINE)
     return Engine(
-        backend=Backend(
+        dialect=Dialect(
             name="fake",
             executable=(sys.executable, str(script)),
             no_such_image=("manifest unknown",),
@@ -220,7 +220,7 @@ class TestAttaching:
                 pass
 
     async def test_unsupported(self):
-        engine = Engine(backend=CONTAINER)
+        engine = Engine(dialect=CONTAINER)
         with pytest.raises(Unsupported) as excinfo:
             async with engine.attach("whatever"):
                 pass
@@ -229,7 +229,7 @@ class TestAttaching:
 
 class TestDetection:
     def test_no_engine_at_all(self):
-        nowhere = Backend(name="definitely-not-installed-anywhere")
+        nowhere = Dialect(name="definitely-not-installed-anywhere")
         with pytest.raises(NoSuchEngine):
             Engine.detect(nowhere)
 
@@ -248,7 +248,7 @@ class TestClassification:
     """
 
     @pytest.mark.parametrize(
-        "backend, stderr",
+        "dialect, stderr",
         [
             (DOCKER, "Cannot connect to the Docker daemon at unix://x.sock"),
             (DOCKER, "Is the docker daemon running?"),
@@ -262,8 +262,8 @@ class TestClassification:
             ),
         ],
     )
-    def test_not_running(self, backend, stderr):
-        error = backend.classify(
+    def test_not_running(self, dialect, stderr):
+        error = dialect.classify(
             argv=("x",),
             returncode=1,
             stderr=stderr,
@@ -272,7 +272,7 @@ class TestClassification:
         assert isinstance(error, EngineNotRunning)
 
     @pytest.mark.parametrize(
-        "backend, stderr",
+        "dialect, stderr",
         [
             (
                 DOCKER,
@@ -285,8 +285,8 @@ class TestClassification:
             (PODMAN, 'Head "https://ghcr.io/v2/x/manifests/latest": denied'),
         ],
     )
-    def test_no_such_image(self, backend, stderr):
-        error = backend.classify(
+    def test_no_such_image(self, dialect, stderr):
+        error = dialect.classify(
             argv=("x",),
             returncode=1,
             stderr=stderr,
@@ -296,14 +296,14 @@ class TestClassification:
         assert error.image == "some-image"
 
     @pytest.mark.parametrize(
-        "backend, stderr",
+        "dialect, stderr",
         [
             (DOCKER, "Error response from daemon: No such container: abcd"),
             (PODMAN, 'Error: no container with name or ID "abcd" found'),
         ],
     )
-    def test_no_such_container(self, backend, stderr):
-        error = backend.classify(
+    def test_no_such_container(self, dialect, stderr):
+        error = dialect.classify(
             argv=("x",),
             returncode=1,
             stderr=stderr,
