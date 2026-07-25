@@ -21,7 +21,6 @@ from imaged import (
     NoSuchEngine,
     NoSuchImage,
     SessionClosed,
-    Unsupported,
 )
 
 pytestmark = [pytest.mark.anyio, pytest.mark.real]
@@ -132,12 +131,6 @@ async def test_doesnt_exist(engine):
 
 async def test_attaching_to_a_running_container(engine, container):
     id = await container("cat")
-    if not engine.attaches:
-        with pytest.raises(Unsupported):
-            async with engine.attach(id):
-                pass
-        return
-
     await engine.start_detached(id)
     async with engine.attach(id) as session:
         await session.send("hello")

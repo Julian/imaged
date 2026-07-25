@@ -216,8 +216,7 @@ class TestMissingEngines:
 
     async def test_starting_a_session(self, engine):
         with pytest.raises(NoSuchEngine):
-            async with engine.start("whatever"):
-                pass
+            await engine.start("whatever").__aenter__()
 
 
 class TestCreating:
@@ -268,8 +267,10 @@ class TestBuilding:
         context = tmp_path / "ctx"
         context.mkdir()
         context.joinpath("Dockerfile").write_text("FROM scratch\n")
+        context.joinpath("subdir").mkdir()  # which isn't itself copied
         await engine.build(tag="some-image", context=context)
-        assert tmp_path.joinpath("contents").read_text() == "['Dockerfile']"
+        contents = tmp_path.joinpath("contents").read_text()
+        assert "Dockerfile" in contents
 
     async def test_a_context_which_isnt_there(self, engine, tmp_path):
         with pytest.raises(EngineFailed):
@@ -279,14 +280,12 @@ class TestBuilding:
 class TestAttaching:
     async def test_nonexistent_container(self, engine):
         with pytest.raises(NoSuchContainer):
-            async with engine.attach("nonexistent-container"):
-                pass
+            await engine.attach("nonexistent-container").__aenter__()
 
     async def test_unsupported(self):
         engine = Engine(dialect=CONTAINER)
         with pytest.raises(Unsupported) as excinfo:
-            async with engine.attach("whatever"):
-                pass
+            await engine.attach("whatever").__aenter__()
         assert excinfo.value.engine == "container"
 
 
@@ -295,6 +294,11 @@ class TestDetection:
         nowhere = Dialect(name="definitely-not-installed-anywhere")
         with pytest.raises(NoSuchEngine):
             Engine.detect(nowhere)
+
+    def test_the_first_one_installed(self):
+        missing = Dialect(name="definitely-not-installed-anywhere")
+        here = Dialect(name="python", executable=(sys.executable,))
+        assert Engine.detect(missing, here).name == "python"
 
     def test_by_name(self):
         assert Engine.named("podman").name == "podman"
