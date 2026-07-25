@@ -75,15 +75,19 @@ skip_covered = false
 branch = true
 source = ["imaged"]
 dynamic_context = "test_function"
+# Every OS and every engine covers different lines, so each CI job
+# contributes a data file which the coverage job combines.
+parallel = true
+
+[tool.coverage.paths]
+source = ["imaged", "*/imaged/imaged", "*\\imaged\\imaged"]
 
 [tool.coverage.report]
 exclude_also = [
   "if TYPE_CHECKING:",
   "\\s*\\.\\.\\.\\s*",
 ]
-# TODO: raise back to 100 once the platform specific branches (and
-#       the engines we can't reach from CI) are accounted for.
-fail_under = 90
+fail_under = 100
 show_missing = true
 skip_covered = true
 

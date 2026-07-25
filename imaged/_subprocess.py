@@ -35,7 +35,7 @@ from imaged._errors import (
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator
 
-    from anyio.abc import ByteReceiveStream, Process
+    from anyio.abc import ByteReceiveStream, ByteSendStream, Process
 
     from imaged._dialects import Dialect
 
@@ -91,6 +91,7 @@ class Session:
     """
 
     _process: Process = field(alias="process", repr=False)
+    _stdin: ByteSendStream = field(alias="stdin", repr=False)
     _stdout: BufferedByteReceiveStream = field(alias="stdout", repr=False)
     _stderr: Path = field(alias="stderr", repr=False)
 
@@ -114,11 +115,8 @@ class Session:
         """
         Write a single line to the container's standard input.
         """
-        stdin = self._process.stdin
-        if stdin is None:
-            raise SessionClosed(stderr=self.stderr())
         try:
-            await stdin.send(f"{line}\n".encode())
+            await self._stdin.send(f"{line}\n".encode())
         except (anyio.BrokenResourceError, anyio.ClosedResourceError):
             raise SessionClosed(stderr=self.stderr()) from None
 
@@ -358,6 +356,7 @@ class Engine:
                 try:
                     yield Session(
                         process=process,
+                        stdin=cast("ByteSendStream", process.stdin),
                         stdout=BufferedByteReceiveStream(
                             cast("ByteReceiveStream", process.stdout),
                         ),

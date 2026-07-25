@@ -182,6 +182,44 @@ class TestSessions:
                 await session.receive()
 
 
+class TestVanishedSessions:
+    async def test_sending_to_a_dead_container(self, engine):
+        id = await engine.create("some-image")
+        async with engine.start(id) as session:
+            await session.send("die")
+            with pytest.raises(SessionClosed):
+                await session.receive()
+            with pytest.raises(SessionClosed):
+                await session.send("anyone there?")
+
+    async def test_stderr_once_the_session_is_over(self, engine):
+        id = await engine.create("some-image")
+        async with engine.start(id) as session:
+            await session.send("complain")
+        assert session.stderr() == b""
+
+
+class TestMissingEngines:
+    """
+    Nothing works when the engine isn't installed at all.
+    """
+
+    @pytest.fixture
+    def engine(self):
+        return Engine(
+            dialect=Dialect(name="nope", executable=("definitely-not-here",)),
+        )
+
+    async def test_running_a_command(self, engine):
+        with pytest.raises(NoSuchEngine):
+            await engine.create("some-image")
+
+    async def test_starting_a_session(self, engine):
+        with pytest.raises(NoSuchEngine):
+            async with engine.start("whatever"):
+                pass
+
+
 class TestCreating:
     async def test_networking_is_the_engine_default(self, engine, argv):
         """
@@ -264,6 +302,35 @@ class TestDetection:
     def test_by_unknown_name(self):
         with pytest.raises(NoSuchEngine):
             Engine.named("kubernetes-lol")
+
+
+class TestSaying:
+    """
+    What we tell someone when we can't do what they asked.
+    """
+
+    @pytest.mark.parametrize(
+        "error, expected",
+        [
+            (NoSuchEngine(tried=("docker", "podman")), "docker, podman"),
+            (
+                EngineNotRunning(engine="docker"),
+                "The docker engine isn't running",
+            ),
+            (NoSuchImage(image="foo"), "'foo'"),
+            (NoSuchContainer(id="abcd"), "'abcd'"),
+            (
+                Unsupported(engine="container", operation="attach"),
+                "container cannot attach",
+            ),
+            (
+                EngineFailed(argv=("docker", "ps"), returncode=2, stderr="no"),
+                "`docker ps` exited with 2",
+            ),
+        ],
+    )
+    def test_it_says_what_happened(self, error, expected):
+        assert expected in str(error)
 
 
 class TestClassification:

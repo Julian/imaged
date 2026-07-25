@@ -1,6 +1,5 @@
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import os
 
 import nox
 
@@ -31,6 +30,10 @@ def session(default=True, python=LATEST, **kwargs):  # noqa: D103
 def tests(session):
     """
     Run the test suite.
+
+    Always under coverage, as no single run of it covers everything --
+    the OS and the engine present both decide which lines run -- so CI
+    combines a data file from each job.
     """
     session.run_install(
         "uv",
@@ -39,31 +42,8 @@ def tests(session):
         f"--python={session.virtualenv.location}",
         env={"UV_PROJECT_ENVIRONMENT": session.virtualenv.location},
     )
-
-    if session.posargs and session.posargs[0] == "coverage":
-        if len(session.posargs) > 1 and session.posargs[1] == "github":
-            github = Path(os.environ["GITHUB_STEP_SUMMARY"])
-        else:
-            github = None
-
-        session.install("coverage[toml]")
-        # -m '' overrides the default of skipping engine tests, as
-        # coverage runs somewhere an engine is actually installed.
-        session.run("coverage", "run", "-m", "pytest", "-m", "", PACKAGE)
-        if github is None:
-            session.run("coverage", "report")
-        else:
-            with github.open("a") as summary:
-                summary.write("### Coverage\n\n")
-                summary.flush()  # without a flush, output seems out of order.
-                session.run(
-                    "coverage",
-                    "report",
-                    "--format=markdown",
-                    stdout=summary,
-                )
-    else:
-        session.run("python", "-m", "pytest", *session.posargs, PACKAGE)
+    session.install("coverage[toml]")
+    session.run("coverage", "run", "-m", "pytest", *session.posargs, PACKAGE)
 
 
 @session(tags=["build"])
