@@ -47,7 +47,9 @@ def tests(session):
             github = None
 
         session.install("coverage[toml]")
-        session.run("coverage", "run", "-m", "pytest", PACKAGE)
+        # -m '' overrides the default of skipping engine tests, as
+        # coverage runs somewhere an engine is actually installed.
+        session.run("coverage", "run", "-m", "pytest", "-m", "", PACKAGE)
         if github is None:
             session.run("coverage", "report")
         else:

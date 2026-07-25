@@ -76,9 +76,12 @@ match args:
             print("Error: no such container", file=sys.stderr)
             sys.exit(1)
     case ["build", *rest]:
-        if not pathlib.Path(rest[-1]).is_dir():
-            print(f"not a context directory: {{rest[-1]}}", file=sys.stderr)
+        context = pathlib.Path(rest[-1])
+        if not context.is_dir():
+            print(f"not a context directory: {rest[-1]}", file=sys.stderr)
             sys.exit(1)
+        names = sorted(each.name for each in context.iterdir())
+        pathlib.Path(__file__).with_name("contents").write_text(str(names))
     case ["pull", *rest] | ["rm", *rest]:
         pass
     case _:
@@ -217,12 +220,18 @@ class TestBuilding:
     A directory is the one form of build context every engine takes.
     """
 
-    async def test_from_a_directory(self, engine, argv, tmp_path):
-        context = tmp_path / "context"
+    async def test_from_a_directory(self, engine, tmp_path):
+        """
+        Whatever reaches the engine holds the context we were given.
+
+        It isn't always the very directory we passed -- on Windows it's
+        a normalized copy -- so the contents are what's worth asserting.
+        """
+        context = tmp_path / "ctx"
         context.mkdir()
         context.joinpath("Dockerfile").write_text("FROM scratch\n")
         await engine.build(tag="some-image", context=context)
-        assert str(context) in argv()[0]
+        assert tmp_path.joinpath("contents").read_text() == "['Dockerfile']"
 
     async def test_a_context_which_isnt_there(self, engine, tmp_path):
         with pytest.raises(EngineFailed):
