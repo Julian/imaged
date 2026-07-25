@@ -118,9 +118,10 @@ DOCKER = Dialect(
         "pull access denied",
         "repository does not exist",
         # Registries (including ghcr.io) decline to distinguish "no such
-        # image" from "you may not look at this image", and Bowtie has
-        # always treated the two alike.
+        # image" from "you may not look at this image", so we treat the
+        # two alike.
         ": denied",
+        "403 (forbidden)",
     ),
     no_such_container=("no such container",),
 )
@@ -135,6 +136,7 @@ PODMAN = Dialect(
         "manifest unknown",
         "unable to find a name and tag match",
         ": denied",
+        "403 (forbidden)",
     ),
     no_such_container=(
         "no such container",

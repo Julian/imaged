@@ -289,6 +289,14 @@ class TestClassification:
             (DOCKER, "Error response from daemon: pull access denied for x"),
             (DOCKER, 'Head "https://ghcr.io/v2/x/manifests/latest": denied'),
             (PODMAN, "Error: unable to find a name and tag match for x"),
+            (
+                PODMAN,
+                (
+                    "Error: initializing source docker://ghcr.io/x:nope: "
+                    "Requesting bearer token: invalid status code from "
+                    "registry 403 (Forbidden)"
+                ),
+            ),
             (PODMAN, 'Head "https://ghcr.io/v2/x/manifests/latest": denied'),
         ],
     )

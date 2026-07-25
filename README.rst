@@ -45,7 +45,7 @@ Every engine reports the same failure differently, and none of them do so
 machine readably -- not even over their HTTP APIs.
 Working out that an image simply doesn't exist otherwise means matching on
 substrings of prose, separately for each engine.
-``imaged`` does that once, and raises `NoSuchImage`.
+``imaged`` does that once, and raises ``NoSuchImage``.
 
 Each engine is driven via its command line interface, which is the only
 mechanism all three have in common, as Apple's container has no HTTP API at
