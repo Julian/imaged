@@ -115,6 +115,10 @@ class Session:
         """
         Write a single line to the container's standard input.
         """
+        # Windows won't necessarily fail the write to a pipe whose far
+        # end is gone, so ask outright rather than wait to be told.
+        if not self.alive:
+            raise SessionClosed(stderr=self.stderr())
         try:
             await self._stdin.send(f"{line}\n".encode())
         except (anyio.BrokenResourceError, anyio.ClosedResourceError):
