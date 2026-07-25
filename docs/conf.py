@@ -37,17 +37,13 @@ linkcheck_ignore = [
     entire_domain("img.shields.io"),
     "https://github.com/Julian/imaged/actions",
     "https://github.com/Julian/imaged/workflows/CI/badge.svg",
+    # Links which only exist once we exist as a package.
+    # Read the Docs has no stable version until something is released,
+    # and a release can't happen while this is what fails the build.
+    # TODO: remove both once the first release has been built.
+    "https://pypi.org/project/imaged/",
+    entire_domain("imaged.readthedocs.io"),
 ]
-
-# Ignore some links that only exist once we exist as a package.
-# It's safe to remove this after a first release.
-if version == "0.1":
-    linkcheck_ignore.extend(
-        [
-            "https://pypi.org/project/imaged/",
-            entire_domain("imaged.readthedocs.io"),
-        ],
-    )
 
 
 # = Extensions =
