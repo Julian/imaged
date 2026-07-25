@@ -158,7 +158,9 @@ jobs:
         run: |
           uvx --with 'coverage[toml]' coverage combine
           uvx --with 'coverage[toml]' coverage report --format=markdown \
-            >>"$GITHUB_STEP_SUMMARY"
+            --fail-under=0 >>"$GITHUB_STEP_SUMMARY"
+          # Last, so that whatever's missing is in the log before this
+          # decides the job.
           uvx --with 'coverage[toml]' coverage report
 
   packaging:
