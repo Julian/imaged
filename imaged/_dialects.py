@@ -122,6 +122,7 @@ DOCKER = Dialect(
         # two alike.
         ": denied",
         "403 (forbidden)",
+        "403 forbidden",
     ),
     no_such_container=("no such container",),
 )
@@ -137,6 +138,7 @@ PODMAN = Dialect(
         "unable to find a name and tag match",
         ": denied",
         "403 (forbidden)",
+        "403 forbidden",
     ),
     no_such_container=(
         "no such container",
