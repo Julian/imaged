@@ -287,7 +287,7 @@ class Engine:
         Is there a container with the given ID?
         """
         try:
-            await self._engine(*self._dialect.inspect, id, subject=id)
+            await self._confirm(id)
         except NoSuchContainer:
             return False
         return True
@@ -313,9 +313,17 @@ class Engine:
             )
         # Confirm it exists up front, as otherwise a bad ID shows up only
         # as a session which closes immediately for no stated reason.
-        await self._engine(*self._dialect.inspect, id, subject=id)
+        await self._confirm(id)
         async with self._session("attach", id) as session:
             yield session
+
+    async def _confirm(self, id: str) -> None:
+        """
+        Confirm there is a container with the given ID.
+        """
+        report = await self._engine(*self._dialect.inspect, id, subject=id)
+        if not self._dialect.confirms(report):
+            raise NoSuchContainer(id=id)
 
     async def _engine(self, *args: str, subject: str) -> str:
         """

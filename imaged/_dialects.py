@@ -9,6 +9,8 @@ quite small, and mostly concerns how each reports failure.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from attrs import frozen
 
 from imaged._errors import (
@@ -17,6 +19,9 @@ from imaged._errors import (
     NoSuchContainer,
     NoSuchImage,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @frozen
@@ -43,6 +48,9 @@ class Dialect:
     #: look at images and networks too, and which says "no such object"
     #: rather than naming what it couldn't find.
     inspect: tuple[str, ...] = ("container", "inspect")
+
+    #: Is an inspect response about the #: subject?
+    confirms: Callable[[str], bool] = lambda _: True
 
     #: Flags which disable networking entirely for a container.
     no_network: tuple[str, ...] = ("--network", "none")
@@ -151,17 +159,27 @@ CONTAINER = Dialect(
     pull=("image", "pull"),
     quiet_pull=("--disable-progress-updates",),
     inspect=("inspect",),
+    confirms=lambda report: report.strip() != "[]",
     remove_image=("image", "rm"),
     attaches=False,
     not_running=(
         "xpc connection error",
         "container system service has been started",
     ),
-    # FIXME: Unverified. Apple's container refuses to say anything at all
-    #        until its service is running, so these need filling in from
-    #        a machine where it is.
-    no_such_image=(),
-    no_such_container=(),
+    no_such_image=(
+        # A registry which has nothing to serve us says so
+        # with the HTTP status it declined with -- and ghcr.io
+        # declines to distinguish "no such image" from "you
+        # may not look at this image", so we treat the two
+        # alike, as docker does above.
+        "401 unauthorized",
+        "403 forbidden",
+        "404 not found",
+        # `container image rm` of an image which isn't there.
+        "failed to delete one or more images",
+    ),
+    # `container inspect` of a container which isn't there.
+    no_such_container=("container not found",),
 )
 
 #: Every engine we know how to drive, in the order we look for them.

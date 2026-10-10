@@ -252,6 +252,15 @@ class TestCreating:
         assert any(each.startswith("['pull'") for each in argv())
 
 
+class TestExists:
+    async def test_a_container_which_is_there(self, engine):
+        id = await engine.create("some-image")
+        assert await engine.exists(id)
+
+    async def test_a_container_which_isnt(self, engine):
+        assert not await engine.exists("nonexistent-container")
+
+
 class TestBuilding:
     """
     A directory is the one form of build context every engine takes.
@@ -398,6 +407,32 @@ class TestClassification:
                 ),
             ),
             (PODMAN, 'Head "https://ghcr.io/v2/x/manifests/latest": denied'),
+            (
+                CONTAINER,
+                (
+                    'Error: internalError: "HTTP request to '
+                    "https://ghcr.io/v2/x/manifests/nope failed "
+                    "with response: 401 Unauthorized. Reason: "
+                    "Access denied or wrong credentials. No "
+                    'credentials found for host ghcr.io"'
+                ),
+            ),
+            (
+                CONTAINER,
+                (
+                    'Error: unknown: "HTTP request to '
+                    "https://registry-1.docker.io/v2/library/x/"
+                    "manifests/nope failed with response: 404 "
+                    'Not Found. Reason: Unknown"'
+                ),
+            ),
+            (
+                CONTAINER,
+                (
+                    'Error: internalError: "failed to delete '
+                    'one or more images: ["nope:latest"]"'
+                ),
+            ),
         ],
     )
     def test_no_such_image(self, dialect, stderr):
@@ -415,6 +450,7 @@ class TestClassification:
         [
             (DOCKER, "Error response from daemon: No such container: abcd"),
             (PODMAN, 'Error: no container with name or ID "abcd" found'),
+            (CONTAINER, "Error: container not found: abcd"),
         ],
     )
     def test_no_such_container(self, dialect, stderr):
@@ -426,6 +462,22 @@ class TestClassification:
         )
         assert isinstance(error, NoSuchContainer)
         assert error.id == "abcd"
+
+    def test_an_empty_inspect_response(self):
+        """
+        Apple's container answers an inspect of a container
+        it doesn't know about with an empty list, rather
+        than an error.
+        """
+        assert not CONTAINER.confirms("[]")
+
+    def test_an_inspect_response_with_empty_lists_in_it(self):
+        """
+        A container which is there can itself hold empty
+        lists, so only a response which is nothing but an
+        empty list means it isn't.
+        """
+        assert CONTAINER.confirms('[{"networks":[],"status":"stopped"}]')
 
     def test_a_downed_engine_beats_a_missing_image(self):
         """
