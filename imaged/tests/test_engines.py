@@ -75,6 +75,9 @@ match args:
         if "nonexistent" in rest[-1]:
             print("Error: no such container", file=sys.stderr)
             sys.exit(1)
+        # Like Apple's container, an inspect of a container it doesn't
+        # know about answers with an empty list rather than an error.
+        print("[]")
     case ["build", *rest]:
         context = pathlib.Path(rest[-1])
         if not context.is_dir():
@@ -303,6 +306,35 @@ class TestAttaching:
         with pytest.raises(Unsupported) as excinfo:
             await engine.attach("whatever").__aenter__()
         assert excinfo.value.engine == "container"
+
+
+class TestAnEmptyInspect:
+    """
+    An engine can also answer an inspect of a container it doesn't know
+    about without erroring at all -- Apple's container answers with an
+    empty list -- in which case the report itself says it isn't there.
+    """
+
+    @pytest.fixture
+    def engine(self, tmp_path):
+        script = tmp_path / "fake-engine.py"
+        script.write_text(FAKE_ENGINE)
+        return Engine(
+            dialect=Dialect(
+                name="empty-inspect",
+                executable=(sys.executable, str(script)),
+                no_such_image=("manifest unknown",),
+                no_such_container=("no such container",),
+                confirms=lambda report: report.strip() != "[]",
+            ),
+        )
+
+    async def test_exists(self, engine):
+        assert not await engine.exists("some-container")
+
+    async def test_attach(self, engine):
+        with pytest.raises(NoSuchContainer):
+            await engine.attach("some-container").__aenter__()
 
 
 class TestDetection:
